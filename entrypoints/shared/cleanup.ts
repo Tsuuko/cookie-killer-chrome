@@ -1,4 +1,5 @@
 import {
+  CleanupDomainSummary,
   CleanupResult,
   CleanupSettings,
   hostnameMatchesWhitelist,
@@ -16,6 +17,7 @@ export async function cleanupNow(settings: CleanupSettings): Promise<CleanupResu
     startedAt: Date.now(),
     finishedAt: Date.now(),
     removedCookies: 0,
+    domainSummaries: [],
     clearedLocalStorage: false,
     clearedSessionStorageTabs: 0,
     clearedHistory: false,
@@ -23,10 +25,13 @@ export async function cleanupNow(settings: CleanupSettings): Promise<CleanupResu
   };
 
   const observedOrigins = await collectObservedOrigins(settings);
+  const domainCounts = new Map<string, CleanupDomainSummary>();
 
   if (settings.targets.cookies) {
     await captureErrors(result, async () => {
-      result.removedCookies = await removeNonWhitelistedCookies(settings);
+      const cookieCounts = await removeNonWhitelistedCookies(settings);
+      result.removedCookies = sumCounts(cookieCounts);
+      mergeDomainCounts(domainCounts, cookieCounts, 'cookies');
     });
   }
 
@@ -39,7 +44,9 @@ export async function cleanupNow(settings: CleanupSettings): Promise<CleanupResu
 
   if (settings.targets.sessionStorage) {
     await captureErrors(result, async () => {
-      result.clearedSessionStorageTabs = await clearOpenTabSessionStorage(settings);
+      const sessionCounts = await clearOpenTabSessionStorage(settings);
+      result.clearedSessionStorageTabs = sumCounts(sessionCounts);
+      mergeDomainCounts(domainCounts, sessionCounts, 'sessionStorageTabs');
     });
   }
 
@@ -52,6 +59,8 @@ export async function cleanupNow(settings: CleanupSettings): Promise<CleanupResu
 
   result.finishedAt = Date.now();
   result.ok = result.errors.length === 0;
+  result.domainSummaries = Array.from(domainCounts.values())
+    .sort((a, b) => (b.cookies + b.sessionStorageTabs) - (a.cookies + a.sessionStorageTabs));
   await patchSettings({
     lastCleanupAt: result.finishedAt,
     observedOrigins,
@@ -65,9 +74,11 @@ export async function rememberOpenTabOrigins(): Promise<void> {
   await patchSettings({ observedOrigins });
 }
 
-async function removeNonWhitelistedCookies(settings: CleanupSettings): Promise<number> {
+async function removeNonWhitelistedCookies(
+  settings: CleanupSettings,
+): Promise<Map<string, number>> {
   const cookies = await browser.cookies.getAll({});
-  let removed = 0;
+  const counts = new Map<string, number>();
 
   await Promise.all(cookies.map(async (cookie) => {
     const hostname = cookie.domain.replace(/^\./, '');
@@ -80,7 +91,6 @@ async function removeNonWhitelistedCookies(settings: CleanupSettings): Promise<n
         name: cookie.name,
         storeId: cookie.storeId,
       });
-      removed += 1;
     } catch {
       const fallbackUrl = `https://${hostname}${cookie.path}`;
       await browser.cookies.remove({
@@ -88,11 +98,12 @@ async function removeNonWhitelistedCookies(settings: CleanupSettings): Promise<n
         name: cookie.name,
         storeId: cookie.storeId,
       });
-      removed += 1;
     }
+
+    counts.set(hostname, (counts.get(hostname) ?? 0) + 1);
   }));
 
-  return removed;
+  return counts;
 }
 
 async function removeNonWhitelistedLocalStorage(
@@ -116,9 +127,11 @@ async function removeNonWhitelistedLocalStorage(
   );
 }
 
-async function clearOpenTabSessionStorage(settings: CleanupSettings): Promise<number> {
+async function clearOpenTabSessionStorage(
+  settings: CleanupSettings,
+): Promise<Map<string, number>> {
   const tabs = await browser.tabs.query({});
-  let cleared = 0;
+  const counts = new Map<string, number>();
 
   await Promise.all(tabs.map(async (tab) => {
     if (!tab.id || !tab.url || !HTTP_URL_MATCH.test(tab.url)) return;
@@ -132,13 +145,14 @@ async function clearOpenTabSessionStorage(settings: CleanupSettings): Promise<nu
           sessionStorage.clear();
         },
       });
-      cleared += 1;
+      const hostname = new URL(origin).hostname;
+      counts.set(hostname, (counts.get(hostname) ?? 0) + 1);
     } catch {
       // Chrome internal pages and restricted pages cannot receive injected scripts.
     }
   }));
 
-  return cleared;
+  return counts;
 }
 
 async function collectObservedOrigins(settings: CleanupSettings): Promise<string[]> {
@@ -155,4 +169,24 @@ async function captureErrors(result: CleanupResult, action: () => Promise<void>)
   } catch (error) {
     result.errors.push(error instanceof Error ? error.message : String(error));
   }
+}
+
+function mergeDomainCounts(
+  summaries: Map<string, CleanupDomainSummary>,
+  counts: Map<string, number>,
+  key: 'cookies' | 'sessionStorageTabs',
+): void {
+  counts.forEach((count, domain) => {
+    const current = summaries.get(domain) ?? {
+      domain,
+      cookies: 0,
+      sessionStorageTabs: 0,
+    };
+    current[key] += count;
+    summaries.set(domain, current);
+  });
+}
+
+function sumCounts(counts: Map<string, number>): number {
+  return Array.from(counts.values()).reduce((total, count) => total + count, 0);
 }

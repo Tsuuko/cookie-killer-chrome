@@ -170,6 +170,33 @@ h2 {
   padding: 0 10px;
 }
 
+.toggle-row span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.toggle-row strong {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.toggle-row small {
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.notice {
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-top: 10px;
+  padding: 8px 10px;
+}
+
 .domain-form {
   display: grid;
   gap: 8px;
@@ -243,4 +270,97 @@ h2 {
   font-size: 13px;
   font-weight: 700;
   margin: 2px 0 0;
+}
+
+.result-status {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.result-status--warn {
+  color: var(--color-danger);
+}
+
+.result-meta {
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.error-details {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-danger);
+  font-size: 12px;
+  margin-top: 10px;
+  padding: 8px 10px;
+}
+
+.error-details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.error-details ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.cleanup-details {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.cleanup-details summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.cleanup-details summary span {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.summary-list {
+  border-top: 1px solid var(--color-border-soft);
+  max-height: 180px;
+  overflow: auto;
+}
+
+.summary-row {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.summary-row + .summary-row {
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.summary-row strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.summary-row span,
+.empty-detail {
+  color: var(--color-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.empty-detail {
+  border-top: 1px solid var(--color-border-soft);
+  padding: 8px 10px;
 }

@@ -8,11 +8,18 @@ export type CleanupSettings = {
   observedOrigins: string[];
 };
 
+export type CleanupDomainSummary = {
+  domain: string;
+  cookies: number;
+  sessionStorageTabs: number;
+};
+
 export type CleanupResult = {
   ok: boolean;
   startedAt: number;
   finishedAt: number;
   removedCookies: number;
+  domainSummaries: CleanupDomainSummary[];
   clearedLocalStorage: boolean;
   clearedSessionStorageTabs: number;
   clearedHistory: boolean;

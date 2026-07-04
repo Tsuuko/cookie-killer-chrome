@@ -19,6 +19,13 @@ const TARGET_LABELS: Record<CleanupTarget, string> = {
   history: 'History',
 };
 
+const TARGET_HELP: Record<CleanupTarget, string> = {
+  cookies: 'ホワイトリストのドメインは残します。',
+  localStorage: 'ホワイトリスト外の保存データを削除します。',
+  sessionStorage: '開いているタブのみ対象です。',
+  history: '履歴を全削除します。',
+};
+
 type Props = {
   mode?: 'popup' | 'options';
 };
@@ -41,6 +48,9 @@ function App({ mode = 'popup' }: Props) {
     () => Object.values(settings.targets).filter(Boolean).length,
     [settings.targets],
   );
+  const cleanupDuration = lastResult
+    ? Math.max(0, lastResult.finishedAt - lastResult.startedAt)
+    : null;
 
   async function updateSettings(next: CleanupSettings) {
     setSettings(next);
@@ -174,10 +184,18 @@ function App({ mode = 'popup' }: Props) {
                 onChange={() => void toggleTarget(target)}
                 type="checkbox"
               />
-              <span>{TARGET_LABELS[target]}</span>
+              <span>
+                <strong>{TARGET_LABELS[target]}</strong>
+                <small>{TARGET_HELP[target]}</small>
+              </span>
             </label>
           ))}
         </div>
+        {settings.targets.history ? (
+          <p className="notice">
+            履歴削除はホワイトリストを無視し、すべての閲覧履歴を削除します。
+          </p>
+        ) : null}
       </section>
 
       <section className="section">
@@ -213,7 +231,14 @@ function App({ mode = 'popup' }: Props) {
       </section>
 
       <section className="section section--result">
-        <h2>実行結果</h2>
+        <div className="section__title">
+          <h2>実行結果</h2>
+          {lastResult ? (
+            <span className={lastResult.ok ? 'result-status' : 'result-status result-status--warn'}>
+              {lastResult.ok ? '完了' : `問題 ${lastResult.errors.length} 件`}
+            </span>
+          ) : null}
+        </div>
         <dl className="result-grid">
           <div>
             <dt>Cookie</dt>
@@ -232,8 +257,44 @@ function App({ mode = 'popup' }: Props) {
             <dd>{lastResult?.clearedHistory ? '実行' : '-'}</dd>
           </div>
         </dl>
+        {lastResult ? (
+          <p className="result-meta">
+            最終実行: {new Date(lastResult.finishedAt).toLocaleString()} / {cleanupDuration} ms
+          </p>
+        ) : (
+          <p className="result-meta">このセッションではまだ実行していません。</p>
+        )}
+        {lastResult ? (
+          <details className="cleanup-details" open={lastResult.domainSummaries.length > 0}>
+            <summary>
+              ドメイン別の削除結果
+              <span>{lastResult.domainSummaries.length} 件</span>
+            </summary>
+            {lastResult.domainSummaries.length > 0 ? (
+              <div className="summary-list">
+                {lastResult.domainSummaries.map((summary) => (
+                  <div className="summary-row" key={summary.domain}>
+                    <strong>{summary.domain}</strong>
+                    <span>
+                      Cookie {summary.cookies} 件 / Session {summary.sessionStorageTabs} 件
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-detail">削除されたデータはありません。</p>
+            )}
+          </details>
+        ) : null}
         {lastResult?.errors.length ? (
-          <p className="error">{lastResult.errors.join(' / ')}</p>
+          <details className="error-details">
+            <summary>一部のクリーンアップを実行できませんでした</summary>
+            <ul>
+              {lastResult.errors.map((error, index) => (
+                <li key={`${error}-${index}`}>{error}</li>
+              ))}
+            </ul>
+          </details>
         ) : null}
       </section>
     </main>
