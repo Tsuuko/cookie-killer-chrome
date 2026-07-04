@@ -135,9 +135,12 @@ function App({ mode = 'popup' }: Props) {
   return (
     <main className={`app app--${mode}`}>
       <header className="app__header">
-        <div>
-          <p className="eyebrow">Cookie Killer</p>
-          <h1>ホワイトリスト式クリーンアップ</h1>
+        <div className="brand">
+          <img className="brand__icon" src="/icon/48.png" alt="" />
+          <div>
+            <h1>Cookie Killer</h1>
+            <p className="tagline">Keep trusted sites, clear the rest.</p>
+          </div>
         </div>
         <span className={settings.autoCleanupEnabled ? 'pill pill--on' : 'pill'}>
           Auto {settings.autoCleanupEnabled ? 'ON' : 'OFF'}
